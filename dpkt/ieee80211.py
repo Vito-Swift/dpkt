@@ -27,6 +27,7 @@ M_DISASSOC = 10
 M_AUTH = 11
 M_DEAUTH = 12
 M_ACTION = 13
+M_ACTION_NO_ACK = 14
 C_BLOCK_ACK_REQ = 8
 C_BLOCK_ACK = 9
 C_PS_POLL = 10
@@ -296,7 +297,8 @@ class IEEE80211(dpkt.Packet):
             M_AUTH: ('auth', self.Auth),
             M_PROBE_RESP: ('probe_resp', self.Beacon),
             M_DEAUTH: ('deauth', self.Deauth),
-            M_ACTION: ('action', self.Action)
+            M_ACTION: ('action', self.Action),
+            M_ACTION_NO_ACK: ('action_no_ack', self.Action_Noack),
         }
 
         c_decoder = {
@@ -433,6 +435,9 @@ class IEEE80211(dpkt.Packet):
             else:
                 self.bmp = struct.unpack('128s', self.data[0:_BMP_LENGTH])[0]
             self.data = self.data[len(self.__hdr__) + len(self.bmp):]
+
+    class Action_Noack(dpkt.Packet):
+        pass
 
     class RTS(dpkt.Packet):
         __hdr__ = (
@@ -935,7 +940,7 @@ def test_ieee80211_unpack():
         '000000000000'  # dst
         '000000000000'  # src
         '000000000000'  # bssid
-        '0000'          # frag_seq
+        '0000'  # frag_seq
     )
     ieee80211 = IEEE80211(buf)
     assert ieee80211.ies == []
@@ -948,7 +953,7 @@ def test_ieee80211_unpack():
         '000000000000'  # dst
         '000000000000'  # src
         '000000000000'  # bssid
-        '0000'          # frag_seq
+        '0000'  # frag_seq
     )
     ieee80211 = IEEE80211(buf)
     assert not hasattr(ieee80211, 'ies')
@@ -967,7 +972,7 @@ def test_blockack_unpack():
     buf = unhexlify(
         '000000000000'
         '000000000000'
-        '0000'   # compressed flag not set
+        '0000'  # compressed flag not set
         '0000'
     ) + b'\xff' * 128
 

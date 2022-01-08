@@ -1,5 +1,6 @@
 # Compiled/intermediate Python files
 *.py[cod]
+venv/
 
 # C extensions
 *.so
