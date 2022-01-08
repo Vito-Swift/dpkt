@@ -8,6 +8,7 @@ import struct
 
 from . import dpkt
 from .compat import ntole
+from . import ieee80211NDP
 
 # Frame Types
 MGMT_TYPE = 0
@@ -298,7 +299,7 @@ class IEEE80211(dpkt.Packet):
             M_PROBE_RESP: ('probe_resp', self.Beacon),
             M_DEAUTH: ('deauth', self.Deauth),
             M_ACTION: ('action', self.Action),
-            M_ACTION_NO_ACK: ('action_no_ack', self.Action_Noack),
+            M_ACTION_NO_ACK: ('action_no_ack', self.Action_No_Ack),
         }
 
         c_decoder = {
@@ -346,6 +347,10 @@ class IEEE80211(dpkt.Packet):
                 self.unpack_ies(self.data)
                 return
             if self.subtype == M_ATIM:
+                return
+
+            if self.subtype == M_ACTION_NO_ACK:
+                self.data = ieee80211NDP.IEEE80211NDP(self.data)
                 return
 
         try:
@@ -435,9 +440,6 @@ class IEEE80211(dpkt.Packet):
             else:
                 self.bmp = struct.unpack('128s', self.data[0:_BMP_LENGTH])[0]
             self.data = self.data[len(self.__hdr__) + len(self.bmp):]
-
-    class Action_Noack(dpkt.Packet):
-        pass
 
     class RTS(dpkt.Packet):
         __hdr__ = (
