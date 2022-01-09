@@ -29,6 +29,7 @@ M_AUTH = 11
 M_DEAUTH = 12
 M_ACTION = 13
 M_ACTION_NO_ACK = 14
+C_NDPA = 5
 C_BLOCK_ACK_REQ = 8
 C_BLOCK_ACK = 9
 C_PS_POLL = 10
@@ -303,6 +304,7 @@ class IEEE80211(dpkt.Packet):
         }
 
         c_decoder = {
+            C_NDPA: ('ndpa', self.NDPA),
             C_RTS: ('rts', self.RTS),
             C_CTS: ('cts', self.CTS),
             C_ACK: ('ack', self.ACK),
@@ -376,6 +378,12 @@ class IEEE80211(dpkt.Packet):
             field.data = self.qos_data.data
 
         self.data = field.data
+
+    class NDPA(dpkt.Packet):
+        __hdr__ = (
+            ('dst', '6s', '\x00' * 6),
+            ('src', '6s', '\x00' * 6),
+        )
 
     class BlockAckReq(dpkt.Packet):
         __hdr__ = (
@@ -747,6 +755,7 @@ def test_80211_action_no_ack():
     assert ieee.action_no_ack.VHT.num_subcarriers == 234
     assert ieee.action_no_ack.VHT.asnr[0] == 35.75
     assert ieee.action_no_ack.VHT.asnr[1] == 28.25
+    print(ieee.action_no_ack.VHT.angles)
 
 
 def test_80211_data():

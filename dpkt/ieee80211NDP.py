@@ -52,7 +52,6 @@ class IEEE80211NDP(dpkt.Packet):
         try:
             parser = decoder[self.category][1]
             name = decoder[self.category][0]
-            # todo: What's next?
         except KeyError:
             raise dpkt.UnpackError("KeyError: category=%s" % self.category)
 
@@ -169,8 +168,15 @@ class IEEE80211NDP(dpkt.Packet):
             print("rs: {} ({})".format(self.rs, bin(self.rs)[2:]))
             print("sdt: {} ({})".format(self.sounding_token, bin(self.sounding_token)[2:]))
 
-        def decode_angle(self, val, size):
-            return (val / float(1 << (size + 1))) + (math.pi / float(1 << (size + 2)))
+        def decode_psi(self, val, size):
+            return (val * math.pi / float(1 << (size + 1))) + (math.pi / float(1 << (size + 2)))
+
+        def decode_phi(self, val, size):
+            return (val * math.pi / float(1 << (size - 1))) + (math.pi / float(1 << size))
+
+        @property
+        def V_matrix(self):
+            pass
 
         def unpack(self, buf):
             dpkt.Packet.unpack(self, buf)
@@ -213,7 +219,7 @@ class IEEE80211NDP(dpkt.Packet):
                             current_data += elem << bits_left
                             bits_left += 16
                         val = current_data & psi_mask
-                        self.angles[k].append(self.decode_angle(val, psi_size))
+                        self.angles[k].append(self.decode_psi(val, psi_size))
 
                         bits_left -= psi_size
                         current_data = current_data >> psi_size
@@ -228,7 +234,7 @@ class IEEE80211NDP(dpkt.Packet):
                             current_data += elem << bits_left
                             bits_left += 16
                         val = current_data & phi_mask
-                        self.angles[k].append(self.decode_angle(val, phi_size))
+                        self.angles[k].append(self.decode_phi(val, phi_size))
 
                         bits_left -= phi_size
                         current_data = current_data >> phi_size
