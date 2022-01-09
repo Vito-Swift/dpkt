@@ -67,8 +67,8 @@ class _MetaPacket(type):
                             continue
 
                         shift = bits_total - bits_used - bf_size
-                        mask = (2**bf_size - 1) << shift  # all zeroes except the field bits
-                        mask_inv = (2**bits_total - 1) - mask  # inverse mask
+                        mask = (2 ** bf_size - 1) << shift  # all zeroes except the field bits
+                        mask_inv = (2 ** bits_total - 1) - mask  # inverse mask
                         bits_used += bf_size
 
                         # calculate the default value for the bit field
@@ -81,9 +81,11 @@ class _MetaPacket(type):
                             def getter_func(self):
                                 ph_val = getattr(self, ph_name)
                                 return (ph_val & mask) >> shift
+
                             return getter_func
 
-                        def make_setter(ph_name=ph_name, mask_inv=mask_inv, shift=shift, bf_name=bf_name, max_val=2**bf_size):
+                        def make_setter(ph_name=ph_name, mask_inv=mask_inv, shift=shift, bf_name=bf_name,
+                                        max_val=2 ** bf_size):
                             def setter_func(self, bf_val):
                                 # ensure the given value fits into the number of bits available
                                 if bf_val >= max_val:
@@ -92,12 +94,14 @@ class _MetaPacket(type):
                                 ph_val = getattr(self, ph_name)
                                 ph_val_new = (bf_val << shift) | (ph_val & mask_inv)
                                 setattr(self, ph_name, ph_val_new)
+
                             return setter_func
 
                         # delete property to set the bit field back to its default value
                         def make_delete(bf_name=bf_name, bf_default=bf_default):
                             def delete_func(self):
                                 setattr(self, bf_name, bf_default)
+
                             return delete_func
 
                         setattr(t, bf_name, property(make_getter(), make_setter(), make_delete()))
@@ -105,7 +109,7 @@ class _MetaPacket(type):
         # optional map of functions for pretty printing
         # {field_name: callable(field_value) -> str, ..}
         # define as needed in the child protocol classes
-        #t.__pprint_funcs__ = {}  - disabled here to keep the base class lightweight
+        # t.__pprint_funcs__ = {}  - disabled here to keep the base class lightweight
 
         # placeholder for __public_fields__, a class attribute used in __repr__ and pprint()
         t.__public_fields__ = None
@@ -141,6 +145,7 @@ class Packet(_MetaPacket("Temp", (object,), {})):
     >>> Foo('hello, world!')
     Foo(baz=' wor', foo=1751477356L, bar=28460, data='ld!')
     """
+
     def __init__(self, *args, **kwargs):
         """Packet constructor with ([buf], [field=val,...]) prototype.
 
@@ -244,13 +249,13 @@ class Packet(_MetaPacket("Temp", (object,), {})):
             field_value = getattr(self, field_name)
 
             if (hasattr(self, '__hdr_defaults__') and
-               field_name in self.__hdr_defaults__ and
-               field_value == self.__hdr_defaults__[field_name]):
+                    field_name in self.__hdr_defaults__ and
+                    field_value == self.__hdr_defaults__[field_name]):
                 continue
 
             if (hasattr(self, '__bit_fields_defaults__') and
-               field_name in self.__bit_fields_defaults__ and
-               field_value == self.__bit_fields_defaults__[field_name]):
+                    field_name in self.__bit_fields_defaults__ and
+                    field_value == self.__bit_fields_defaults__[field_name]):
                 continue
 
             l_.append('%s=%r' % (field_name, field_value))
@@ -259,8 +264,8 @@ class Packet(_MetaPacket("Temp", (object,), {})):
         l_.extend(
             ['%s=%r' % (attr_name, attr_value)
              for attr_name, attr_value in iteritems(self.__dict__)
-             if attr_name[0] != '_' and                   # exclude _private attributes
-                attr_name != self.data.__class__.__name__.lower()])  # exclude fields like ip.udp
+             if attr_name[0] != '_' and  # exclude _private attributes
+             attr_name != self.data.__class__.__name__.lower()])  # exclude fields like ip.udp
         # (4)
         if self.data:
             l_.append('data=%r' % self.data)
@@ -284,8 +289,8 @@ class Packet(_MetaPacket("Temp", (object,), {})):
             add_field(field_name, getattr(self, field_name))
 
         for attr_name, attr_value in iteritems(self.__dict__):
-            if (attr_name[0] != '_' and                   # exclude _private attributes
-               attr_name != self.data.__class__.__name__.lower()):  # exclude fields like ip.udp
+            if (attr_name[0] != '_' and  # exclude _private attributes
+                    attr_name != self.data.__class__.__name__.lower()):  # exclude fields like ip.udp
                 if type(attr_value) == list and attr_value:  # expand non-empty lists to print one item per line
                     l_.append('%s=[' % attr_name)
                     for av1 in attr_value:
@@ -446,7 +451,7 @@ def test_pack_hdr_overflow():
             ('bar', 'I', (1, 2)),
         )
 
-    foo = Foo(foo=2**32)
+    foo = Foo(foo=2 ** 32)
     with pytest.raises(PackError):
         bytes(foo)
 
@@ -473,6 +478,7 @@ def test_bit_fields_overflow():
 
 def test_pack_hdr_tuple():
     """Test the unpacking of a tuple for a single format string"""
+
     class Foo(Packet):
         __hdr__ = (
             ('bar', 'II', (1, 2)),
@@ -504,10 +510,10 @@ def test_repr():
 
     class TestPacket(Packet):
         __hdr__ = (
-            ('_a_b', 'B', 1),     # 'a' and 'b' bit fields
-            ('_rsv', 'B', 0),     # hidden reserved field
+            ('_a_b', 'B', 1),  # 'a' and 'b' bit fields
+            ('_rsv', 'B', 0),  # hidden reserved field
             ('_c_flag', 'B', 1),  # 'c_flag' property
-            ('d', 'B', 0)         # regular field
+            ('d', 'B', 0)  # regular field
         )
 
         __bit_fields__ = {

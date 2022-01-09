@@ -299,7 +299,7 @@ class IEEE80211(dpkt.Packet):
             M_PROBE_RESP: ('probe_resp', self.Beacon),
             M_DEAUTH: ('deauth', self.Deauth),
             M_ACTION: ('action', self.Action),
-            M_ACTION_NO_ACK: ('action_no_ack', self.Action_No_Ack),
+            M_ACTION_NO_ACK: ('action_no_ack', ieee80211NDP.IEEE80211NDP),
         }
 
         c_decoder = {
@@ -348,11 +348,6 @@ class IEEE80211(dpkt.Packet):
                 return
             if self.subtype == M_ATIM:
                 return
-
-            if self.subtype == M_ACTION_NO_ACK:
-                self.data = ieee80211NDP.IEEE80211NDP(self.data)
-                return
-
         try:
             parser = decoder[self.type][self.subtype][1]
             name = decoder[self.type][self.subtype][0]
@@ -371,7 +366,7 @@ class IEEE80211(dpkt.Packet):
 
         setattr(self, name, field)
 
-        if self.type == MGMT_TYPE:
+        if self.type == MGMT_TYPE and self.subtype != M_ACTION_NO_ACK:
             self.unpack_ies(field.data)
             if self.subtype in FRAMES_WITH_CAPABILITY:
                 self.capability = self.Capability(ntole(field.capability))
@@ -715,6 +710,43 @@ def test_80211_beacon():
     assert ieee.tim.data == b'\x00\x01\x00\x00'
     fcs = struct.unpack('<I', s[-4:])[0]
     assert ieee.fcs == fcs
+
+
+def test_80211_action_no_ack():
+    # s is the hex dump of a NDP report packet captured from a real rtl8814au beamformee
+    s = (
+        b"\xe0\x00\x00\x00\xe8\x4e\x06"
+        b"\x95\x28\xcd\xe8\x4e\x06\x95\x29\x24\xe8\x4e\x06\x95\x29\x24\x00"
+        b"\x32\x15\x00\x89\x84\x54\x37\x19\x9b\x6e\xb4\x99\x86\xdb\x6d\xb8"
+        b"\xe1\x76\x1b\x6e\xb7\xe1\x86\x5b\x6e\xb8\xe1\x86\x1b\x6e\xb8\xe1"
+        b"\x96\x1b\x6e\xb8\xe5\x96\x5b\x6e\xb9\xe5\x96\x5b\x6e\xca\xe5\x96"
+        b"\x5b\x6e\xb9\x29\xa7\x9c\x72\xca\x29\xa7\x9b\x72\xba\xe9\xa6\x9c"
+        b"\x72\xca\x29\xa7\x9b\x6e\xba\x29\xa7\xdc\x6e\xca\xe9\xa6\xdb\x6e"
+        b"\xca\x2d\xb7\xdc\x72\xcb\x2d\xb7\xdb\x72\xcb\x2d\xb7\xdc\x6e\xbb"
+        b"\xed\xb6\xda\x6a\xab\xb1\xb6\xda\x6a\xab\xad\xb6\xd9\x66\x9c\x6d"
+        b"\xb6\xd9\x66\x9b\x6d\xb6\xd9\x66\x9b\xad\xb6\xda\x6a\xab\xad\xb6"
+        b"\xda\x6a\xbb\xed\xb6\xdc\x6e\xbb\xed\xb6\xda\x6e\xcb\xed\xb6\xdb"
+        b"\x6e\xbb\xed\xb6\xdb\x6e\xbb\xed\xb6\xdb\x6e\xba\x2d\xb7\xdc\x6e"
+        b"\xcb\xed\xa6\xdc\x72\xda\x29\xb7\xdc\x72\xcb\x2d\xb7\xdc\x72\xcb"
+        b"\x2d\xb7\xdc\x72\xcb\xed\xb6\x1c\x6b\xcb\xf1\xb6\xdb\x6e\xbb\xf1"
+        b"\xc6\x1b\x6f\xbc\xb1\xc6\xdb\x6a\xac\xb1\xc6\x1a\x6f\xbc\xb1\xc6"
+        b"\x19\x67\x8c\x31\xc6\x19\x67\x9c\x31\xc6\x18\x5f\x7c\xf1\xc5\x17"
+        b"\x63\x8c\xf1\xc5\x17\x5f\x7c\xb1\xc5\x16\x5f\x7c\xf1\xc5\x17\x5f"
+        b"\x6c\xf1\xc5\x17\x5f\x7b\xed\xb5\xd7\x5e\x7b\xf1\xc5\xd7\x5e\x7b"
+        b"\xed\xb5\xd7\x5e\x7b\xed\xb5\xd8\x62\x8b\x2d\xb6\xd8\x62\x8b\x2d"
+        b"\xc6\xd9\x66\x9b\x2d\xb6\xd8\x66\x9c\x71\xc6\x19\x67\x8b\x2d\xc6"
+        b"\xd8\x62\x8c\x71\xc6\xd9\x66\x8b\x2d\xb6\xd8\x62\x0b\xf9\x3b\xbb\x1f"
+    )
+    ieee = IEEE80211(s, fcs=True)
+    assert ieee.type == MGMT_TYPE
+    assert ieee.subtype == M_ACTION_NO_ACK
+    assert ieee.action_no_ack.category == 0x15
+    assert ieee.action_no_ack.action == 0x0
+    assert ieee.action_no_ack.VHT.num_cols == 2
+    assert ieee.action_no_ack.VHT.num_rows == 2
+    assert ieee.action_no_ack.VHT.num_subcarriers == 234
+    assert ieee.action_no_ack.VHT.asnr[0] == 35.75
+    assert ieee.action_no_ack.VHT.asnr[1] == 28.25
 
 
 def test_80211_data():
